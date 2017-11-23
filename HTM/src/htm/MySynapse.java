@@ -16,7 +16,7 @@ import java.util.concurrent.ThreadLocalRandom;
  */
 public class MySynapse extends AbstractNetworkEdge {
 
-    private final double THRESHOLD = 0.5;
+    public static final double THRESHOLD = 0.5;
     private double currentValue = THRESHOLD;
     private boolean activated;
     

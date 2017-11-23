@@ -23,7 +23,8 @@ import java.util.stream.IntStream;
  */
 public class MyNetwork implements Runnable {
 
-    private static final double MINRATEACTIVITY = 0.5;
+    private static final int INPUTMAX = 18;
+    private static final double MINRATEACTIVITY = 0.01;
     private final int MINOVERLAP = 1;
     private final int desiredLocalActivity = 2;
     private NodeBuilder nb;
@@ -102,7 +103,7 @@ public class MyNetwork implements Runnable {
 
     @Override
     public void run() {
-        int[] inputs = IntStream.rangeClosed(1,30).toArray();
+        int[] inputs = IntStream.rangeClosed(1,INPUTMAX).toArray();
         int count = 0;
         int count2 = 0;
         while (true) {
@@ -129,8 +130,11 @@ public class MyNetwork implements Runnable {
                 }
                 if(c.getCurrentOverlap() < MINOVERLAP){
                     c.setCurrentOverlap(0);
+                    c.updateOverlapDutyCycle(false);
+                }else{
+                    c.updateOverlapDutyCycle(true);
+                    c.setCurrentOverlap(c.getCurrentOverlap()*c.getBoost());
                 }
-                c.setCurrentOverlap(c.getCurrentOverlap()*c.getBoost());
                 if(winners.isEmpty()){
                     winners.add(c);
                 }else{
@@ -153,7 +157,7 @@ public class MyNetwork implements Runnable {
                     if(n.isActivated()){
                         ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.002);
                     }else{
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-0.001);
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-0.01);
                     }
                 }
             }
@@ -168,15 +172,20 @@ public class MyNetwork implements Runnable {
             double minActivityAllowed = maxActivity * MINRATEACTIVITY;
             for(MyColumn c : lstMC){
                 if(c.getActivity()<minActivityAllowed){
-                    c.setBoost(3.5);
+                    c.boostfunction();
                 }else{
-                    c.setBoost(1);
+                    c.resetBoost();
+                }
+                if(c.getOverlapDutyCycle() < minActivityAllowed){
+                    for (EdgeInterface e : c.getNode().getEdgeIn()) {
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.1*MySynapse.THRESHOLD);
+                    }
                 }
             }
 
             try{
-                if(count2 < 10000){
-                    Thread.sleep(5);
+                if(count2 < 50000){
+                    // No sleep for faster "learning" phase
                 }else {
                     Thread.sleep(1000);
                 }
@@ -220,7 +229,9 @@ public class MyNetwork implements Runnable {
     }
 
     private void encode(int currentInput){
-        double marge = 1;
+
+        /*
+        double marge = 0.5;
         double temp = (currentInput+1);
         for(int i = 1; i <= lstMN.size(); i++){
             if(i <= temp/2 + marge && i >= temp/2 - marge){
@@ -229,6 +240,17 @@ public class MyNetwork implements Runnable {
             }else{
                 lstMN.get(i-1).getNode().setState(NodeInterface.State.DESACTIVATED);
                 lstMN.get(i-1).setActivated(false);
+            }
+        }
+        */
+        int bitWide = 2;
+        for(int i = 0; i < lstMN.size(); i++) {
+            if(currentInput >= i && currentInput <= i+bitWide){
+                lstMN.get(i).getNode().setState(NodeInterface.State.ACTIVATED);
+                lstMN.get(i).setActivated(true);
+            }else{
+                lstMN.get(i).getNode().setState(NodeInterface.State.DESACTIVATED);
+                lstMN.get(i).setActivated(false);
             }
         }
     }
