@@ -88,14 +88,21 @@ public class MyNetwork implements Runnable {
         /*
          * Connections totale
          */
-
+        double columnIndex = 0;
+        double neuronIndex = 0;
         for(MyColumn c : lstMC){
             for(MyNeuron n : lstMN){
                 EdgeInterface e = eb.getNewEdge(n.getNode(), c.getNode());
                 MySynapse s = new MySynapse(e);
                 e.setAbstractNetworkEdge(s);
-
+                double coordNeuron = neuronIndex/lstMN.size();
+                double coordColumn = columnIndex/lstMC.size();
+                double startDistance = Math.abs(coordColumn-coordNeuron);
+                s.setEdgeLength(startDistance);
+                neuronIndex +=1;
             }
+            neuronIndex =0;
+            columnIndex +=1;
         }
         
         
@@ -124,6 +131,13 @@ public class MyNetwork implements Runnable {
                         continue;
                     }
                     MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
+
+                    // Comment Thes following lines to ignore geographical proximity
+                    Double random = new Random().nextDouble();
+                    if(((MySynapse) e.getAbstractNetworkEdge()).getEdgeLength() > random){
+                        continue;
+                    }
+
                     if(n.isActivated()){
                         c.incrementCurrentOverlap();
                     }

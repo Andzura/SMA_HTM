@@ -19,8 +19,16 @@ public class MySynapse extends AbstractNetworkEdge {
     public static final double THRESHOLD = 0.5;
     private double currentValue = THRESHOLD;
     private boolean activated;
-    
-    
+    private double edgeLength;
+
+    public void setEdgeLength(double edgeLength) {
+        this.edgeLength = edgeLength;
+    }
+
+    public double getEdgeLength() {
+        return edgeLength;
+    }
+
     protected MySynapse(EdgeInterface _edge) {
         super(_edge);
         currentValueUdpate(ThreadLocalRandom.current().nextDouble(-0.25,0.25));
