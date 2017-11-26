@@ -23,8 +23,11 @@ import java.util.stream.IntStream;
  */
 public class MyNetwork implements Runnable {
 
+    private static final double LEARNINGRATE = 0.005;
+    public static final double NEIGHBORHOODRADIUS = 16;
     private static final int INPUTMAX = 18;
     private static final double MINRATEACTIVITY = 0.01;
+    public static final double CENTERBOOST = 0.2;
     private final int MINOVERLAP = 1;
     private final int desiredLocalActivity = 2;
     private NodeBuilder nb;
@@ -88,14 +91,18 @@ public class MyNetwork implements Runnable {
         /*
          * Connections totale
          */
-
+        double i = lstMN.size()/lstMC.size()/2;
         for(MyColumn c : lstMC){
+            int j = 0;
             for(MyNeuron n : lstMN){
                 EdgeInterface e = eb.getNewEdge(n.getNode(), c.getNode());
                 MySynapse s = new MySynapse(e);
+                s.applyBias(i,j);
                 e.setAbstractNetworkEdge(s);
+                j++;
 
             }
+            i += lstMN.size()/lstMC.size();
         }
         
         
@@ -155,9 +162,9 @@ public class MyNetwork implements Runnable {
                 for (EdgeInterface e : c.getNode().getEdgeIn()) {
                     MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
                     if(n.isActivated()){
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.002);
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(LEARNINGRATE);
                     }else{
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-0.01);
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-LEARNINGRATE);
                     }
                 }
             }
@@ -184,8 +191,8 @@ public class MyNetwork implements Runnable {
             }
 
             try{
-                if(count2 < 50000){
-                    // No sleep for faster "learning" phase
+                if(count2 < 10000){
+                    Thread.sleep(1);
                 }else {
                     Thread.sleep(1000);
                 }
@@ -243,9 +250,9 @@ public class MyNetwork implements Runnable {
             }
         }
         */
-        int bitWide = 2;
+        double bitWide = 1;
         for(int i = 0; i < lstMN.size(); i++) {
-            if(currentInput >= i && currentInput <= i+bitWide){
+            if(currentInput >= i && currentInput <= (i+1)+bitWide){
                 lstMN.get(i).getNode().setState(NodeInterface.State.ACTIVATED);
                 lstMN.get(i).setActivated(true);
             }else{

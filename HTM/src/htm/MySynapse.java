@@ -18,6 +18,8 @@ public class MySynapse extends AbstractNetworkEdge {
 
     public static final double THRESHOLD = 0.5;
     private double currentValue = THRESHOLD;
+    private static final double inertia = 0.1;
+    private double lastVariation = 0;
     private boolean activated;
     
     
@@ -27,7 +29,9 @@ public class MySynapse extends AbstractNetworkEdge {
     }
     
     public void currentValueUdpate(double delta) {
-        currentValue += delta;
+        double variation = inertia*lastVariation + delta;
+        lastVariation = variation;
+        currentValue += variation;
         
         if (currentValue > 1) {
             currentValue = 1;
@@ -51,5 +55,13 @@ public class MySynapse extends AbstractNetworkEdge {
 
     public void setActivated(boolean activated) {
         this.activated = activated;
+    }
+
+    public void applyBias(double i, int j) {
+        double bias = Math.abs(i-j);
+        bias = bias <= MyNetwork.NEIGHBORHOODRADIUS ? 1-(bias/MyNetwork.NEIGHBORHOODRADIUS) : 0;
+        //bias = Math.sin(bias  * Math.PI);
+        System.out.println(i+" "+j +" = "+ bias);
+      currentValueUdpate(bias * MyNetwork.CENTERBOOST * THRESHOLD);
     }
 }
