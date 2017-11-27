@@ -24,12 +24,13 @@ import java.util.stream.IntStream;
 public class MyNetwork implements Runnable {
 
     private static final double LEARNINGRATE = 0.005;
-    public static final double NEIGHBORHOODRADIUS = 16;
-    private static final int INPUTMAX = 18;
+    public static final double NEIGHBORHOODRADIUS = 6;
+    private static final int INPUTMAX = 16;
     private static final double MINRATEACTIVITY = 0.01;
     public static final double CENTERBOOST = 0.2;
-    private final int MINOVERLAP = 1;
-    private final int desiredLocalActivity = 2;
+    private static final int MINOVERLAP = 1;
+    private static final int desiredLocalActivity = 2;
+
     private NodeBuilder nb;
     private EdgeBuilder eb;
     
@@ -91,6 +92,7 @@ public class MyNetwork implements Runnable {
         /*
          * Connections totale
          */
+        /*
         double i = lstMN.size()/lstMC.size()/2;
         for(MyColumn c : lstMC){
             int j = 0;
@@ -100,19 +102,47 @@ public class MyNetwork implements Runnable {
                 s.applyBias(i,j);
                 e.setAbstractNetworkEdge(s);
                 j++;
-
             }
             i += lstMN.size()/lstMC.size();
         }
+        //*/
+        /*
+         * Connection basée sur la distance
+         */
+        //*
+        int i = 0;
+        double columnIndex = 0;
+        double neuronIndex = 0;
+        for(MyColumn c : lstMC){
+            int j = 0;
+            for(MyNeuron n : lstMN){
+                double coordNeuron = neuronIndex/lstMN.size();
+                double coordColumn = columnIndex/lstMC.size();
+                double startDistance = Math.abs(coordColumn-coordNeuron);
+                if(startDistance <  0.4){
+                    EdgeInterface e = eb.getNewEdge(n.getNode(), c.getNode());
+                    MySynapse s = new MySynapse(e);
+                    s.applyBias(i, j);
+                    e.setAbstractNetworkEdge(s);
+                }
+                j++;
+                neuronIndex +=1;
+            }
+            i += lstMN.size()/lstMC.size();
+            neuronIndex =0;
+            columnIndex +=1;
+        }
+        //*/
         
         
     }
 
     @Override
     public void run() {
-        int[] inputs = IntStream.rangeClosed(1,INPUTMAX).toArray();
+        int[] inputs = IntStream.rangeClosed(0,INPUTMAX).toArray();
         int count = 0;
         int count2 = 0;
+        boolean learning = true;
         while (true) {
             count2++;
             int currentInput = inputs[count];
@@ -131,6 +161,15 @@ public class MyNetwork implements Runnable {
                         continue;
                     }
                     MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
+
+                    // Comment These following lines to ignore geographical proximity
+                    /*
+                    Double random = new Random().nextDouble();
+                    if(((MySynapse) e.getAbstractNetworkEdge()).getEdgeLength() > random){
+                        continue;
+                    }
+                    */
+
                     if(n.isActivated()){
                         c.incrementCurrentOverlap();
                     }
@@ -159,6 +198,7 @@ public class MyNetwork implements Runnable {
                 MyColumn c = winners.get(i);
                 c.getNode().setState(NodeInterface.State.ACTIVATED);
                 c.setActivated(true);
+                if(learning)
                 for (EdgeInterface e : c.getNode().getEdgeIn()) {
                     MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
                     if(n.isActivated()){
@@ -191,9 +231,10 @@ public class MyNetwork implements Runnable {
             }
 
             try{
-                if(count2 < 10000){
+                if(count2 < 20000){
                     Thread.sleep(1);
                 }else {
+                    learning = false;
                     Thread.sleep(1000);
                 }
             } catch (InterruptedException e) {
@@ -252,7 +293,7 @@ public class MyNetwork implements Runnable {
         */
         double bitWide = 1;
         for(int i = 0; i < lstMN.size(); i++) {
-            if(currentInput >= i && currentInput <= (i+1)+bitWide){
+            if(currentInput >= i*bitWide && currentInput <= (i+1)*bitWide){
                 lstMN.get(i).getNode().setState(NodeInterface.State.ACTIVATED);
                 lstMN.get(i).setActivated(true);
             }else{
