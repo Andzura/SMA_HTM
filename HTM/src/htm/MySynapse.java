@@ -21,7 +21,7 @@ public class MySynapse extends AbstractNetworkEdge {
     private double inertia = 0.1;
     private double lastVariation = 0;
     private boolean activated;
-    private double edgeLength;
+    private double edgeLength = 0;
 
     public void setEdgeLength(double edgeLength) {
         this.edgeLength = edgeLength;
@@ -33,7 +33,7 @@ public class MySynapse extends AbstractNetworkEdge {
 
     protected MySynapse(EdgeInterface _edge) {
         super(_edge);
-        currentValueUdpate(ThreadLocalRandom.current().nextDouble(-0.1,0.1));
+        currentValueUdpate(ThreadLocalRandom.current().nextDouble(-0.25,0.25));
     }
     
     public void currentValueUdpate(double delta) {
@@ -69,7 +69,6 @@ public class MySynapse extends AbstractNetworkEdge {
     public void applyBias(double i, int j) {
         double bias = Math.abs(i-j);
         bias = bias <= MyNetwork.NEIGHBORHOODRADIUS ? 1-(bias/MyNetwork.NEIGHBORHOODRADIUS) : 0;
-        System.out.println(i+" "+j +" = "+ bias);
-      currentValueUdpate(bias * MyNetwork.CENTERBOOST * THRESHOLD);
+        currentValueUdpate(bias * MyNetwork.CENTERBOOST * THRESHOLD);
     }
 }

@@ -53,7 +53,7 @@ public class HTM {
         GraphStreamBuilder gb = new GraphStreamBuilder(graph);
         MyNetwork mn = new MyNetwork(gb, gb);
         
-        mn.buildNetwork(16, 7); // un réseau de démonstration avec 16 entrées et 5 colonnes
+        mn.buildNetwork(16, 8); // un réseau de démonstration avec 16 entrées et 5 colonnes
         graph.display(false);
         
         
