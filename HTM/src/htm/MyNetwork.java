@@ -202,7 +202,7 @@ public class MyNetwork implements Runnable {
                 for (EdgeInterface e : c.getNode().getEdgeIn()) {
                     MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
                     if(n.isActivated()){
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(LEARNINGRATE);
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(LEARNINGRATE*1.1);
                     }else{
                         ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-LEARNINGRATE);
                     }
@@ -217,22 +217,25 @@ public class MyNetwork implements Runnable {
             }
 
             double minActivityAllowed = maxActivity * MINRATEACTIVITY;
+            int i = 0;
             for(MyColumn c : lstMC){
                 if(c.getActivity()<minActivityAllowed){
+                    System.out.println("BOOST:" + i);
                     c.boostfunction();
                 }else{
                     c.resetBoost();
                 }
                 if(c.getOverlapDutyCycle() < minActivityAllowed){
                     for (EdgeInterface e : c.getNode().getEdgeIn()) {
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.1*MySynapse.THRESHOLD);
+                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.0*MySynapse.THRESHOLD);
                     }
                 }
+                i++;
             }
 
             try{
-                if(count2 < 20000){
-                    Thread.sleep(1);
+                if(count2 < 1000){
+                    Thread.sleep(10);
                 }else {
                     learning = false;
                     Thread.sleep(1000);
