@@ -88,7 +88,7 @@ public class MyColumn extends AbstractNetworkNode {
     }
 
     public void boostfunction() {
-        this.boost += 1 ;
+        this.boost += 0.2;
     }
 
     public double getOverlapDutyCycle() {

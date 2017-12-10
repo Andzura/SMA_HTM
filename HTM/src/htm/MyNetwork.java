@@ -24,10 +24,10 @@ import java.util.stream.IntStream;
 public class MyNetwork implements Runnable {
 
     private static final double LEARNINGRATE = 0.005;
-    public static final double NEIGHBORHOODRADIUS = 6;
-    private static final int INPUTMAX = 16;
+    public static final double NEIGHBORHOODRADIUS = 5;
+    private static final int INPUTMAX = 18;
     private static final double MINRATEACTIVITY = 0.01;
-    public static final double CENTERBOOST = 0.2;
+    public static final double CENTERBOOST = 0.1;
     private static final int MINOVERLAP = 1;
     private static final int desiredLocalActivity = 2;
 
@@ -36,7 +36,7 @@ public class MyNetwork implements Runnable {
     
     ArrayList<MyNeuron> lstMN;
     ArrayList<MyColumn> lstMC;
-    private static double minActivity = 0.5;
+    private static double minActivity = 0.01;
     
     
     public MyNetwork(NodeBuilder _nb, EdgeBuilder _eb) {
@@ -92,34 +92,45 @@ public class MyNetwork implements Runnable {
         /*
          * Connections totale
          */
-        /*
+
+        //*
         double i = lstMN.size()/lstMC.size()/2;
+        double columnIndex = 0;
+        double neuronIndex = 0;
         for(MyColumn c : lstMC){
             int j = 0;
             for(MyNeuron n : lstMN){
                 EdgeInterface e = eb.getNewEdge(n.getNode(), c.getNode());
+                double coordNeuron = neuronIndex/lstMN.size();
+                double coordColumn = columnIndex/lstMC.size();
+                double startDistance = Math.abs(coordColumn-coordNeuron);
                 MySynapse s = new MySynapse(e);
+                s.setEdgeLength(startDistance);
                 s.applyBias(i,j);
                 e.setAbstractNetworkEdge(s);
                 j++;
+                neuronIndex +=1;
             }
             i += lstMN.size()/lstMC.size();
+            columnIndex +=1;
+            neuronIndex = 0;
         }
         //*/
         /*
          * Connection basée sur la distance
          */
-        //*
+        /*
         int i = 0;
         double columnIndex = 0;
         double neuronIndex = 0;
         for(MyColumn c : lstMC){
             int j = 0;
             for(MyNeuron n : lstMN){
-                double coordNeuron = neuronIndex/lstMN.size();
-                double coordColumn = columnIndex/lstMC.size();
-                double startDistance = Math.abs(coordColumn-coordNeuron);
-                if(startDistance <  0.4){
+                double coordNeuron = neuronIndex/lstMN.size()+ 0.5/lstMN.size();
+                double coordColumn = columnIndex/lstMC.size()+ 0.5/lstMC.size();
+                double startDistance = Math.min(Math.abs(coordColumn-coordNeuron), 1-Math.abs(coordColumn-coordNeuron));
+                System.out.println(startDistance);
+                if(startDistance <=  1/(NEIGHBORHOODRADIUS) ){
                     EdgeInterface e = eb.getNewEdge(n.getNode(), c.getNode());
                     MySynapse s = new MySynapse(e);
                     s.applyBias(i, j);
@@ -139,105 +150,126 @@ public class MyNetwork implements Runnable {
 
     @Override
     public void run() {
+        int[] countWin = new int[8];
         int[] inputs = IntStream.rangeClosed(0,INPUTMAX).toArray();
         int count = 0;
         int count2 = 0;
         boolean learning = true;
-        while (true) {
+                while (true) {
             count2++;
-            int currentInput = inputs[count];
             count = (count + 1)%inputs.length;
-
+            int currentInput = new Random().nextInt(INPUTMAX);
             // processus de démontration qui permet de voyager dans le graphe et de faire varier les état des synaptes, entrées et colonnes
             encode(currentInput);
 
             List<MyColumn> winners = new ArrayList<>();
+            int j = -1;
+            System.out.println("------");
             for(MyColumn c : lstMC){
+                boolean inCompetition = false;
                 c.getNode().setState(NodeInterface.State.DESACTIVATED);
                 c.setActivated(false);
                 c.setCurrentOverlap(0);
                 for (EdgeInterface e : c.getNode().getEdgeIn()) {
+                    // Comment These following lines to ignore geographical proximity
+                    //*
+                    Double random = new Random().nextDouble();
+                    if(learning && ((MySynapse) e.getAbstractNetworkEdge()).getEdgeLength() > random){
+                        continue;
+                    }
+                    //*/
+                    MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
+                    if(n.isActivated()){
+                        inCompetition = true;
+                    }
+                    else{
+                        continue;
+                    }
                     if(!((MySynapse) e.getAbstractNetworkEdge()).isActivated()){
                         continue;
                     }
-                    MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
-
-                    // Comment These following lines to ignore geographical proximity
-                    /*
-                    Double random = new Random().nextDouble();
-                    if(((MySynapse) e.getAbstractNetworkEdge()).getEdgeLength() > random){
-                        continue;
-                    }
-                    */
-
-                    if(n.isActivated()){
-                        c.incrementCurrentOverlap();
-                    }
+                    c.incrementCurrentOverlap();
                 }
+                j++;
                 if(c.getCurrentOverlap() < MINOVERLAP){
+                    countWin[j] = countWin[j] + 1;
                     c.setCurrentOverlap(0);
                     c.updateOverlapDutyCycle(false);
                 }else{
                     c.updateOverlapDutyCycle(true);
                     c.setCurrentOverlap(c.getCurrentOverlap()*c.getBoost());
                 }
+                System.out.println("Overlap "+j+" : "+ ((double)countWin[j]/(double)count2));
                 if(winners.isEmpty()){
                     winners.add(c);
                 }else{
+                    boolean added = false;
                     for(int i = 0; i < winners.size(); i++){
                         if(winners.get(i).getCurrentOverlap() < c.getCurrentOverlap()){
                             winners.add(i, c);
+                            added = true;
                             break;
                         }
                     }
-                    winners.add(c);
+                    if(!added)
+                        winners.add(c);
                 }
             }
+            System.out.println("------\n");
 
-            for(int i = 0; i < desiredLocalActivity; i++){
+            for(int i = 0; i < desiredLocalActivity && winners.get(i).getCurrentOverlap() > 0; i++){
                 MyColumn c = winners.get(i);
                 c.getNode().setState(NodeInterface.State.ACTIVATED);
                 c.setActivated(true);
-                if(learning)
-                for (EdgeInterface e : c.getNode().getEdgeIn()) {
-                    MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
-                    if(n.isActivated()){
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(LEARNINGRATE*1.1);
-                    }else{
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-LEARNINGRATE);
-                    }
-                }
-            }
-
-            double maxActivity = 0.0;
-            for(MyColumn c : lstMC){
-                c.updateActivity();
-                if(c.getActivity() > maxActivity)
-                    maxActivity = c.getActivity();
-            }
-
-            double minActivityAllowed = maxActivity * MINRATEACTIVITY;
-            int i = 0;
-            for(MyColumn c : lstMC){
-                if(c.getActivity()<minActivityAllowed){
-                    System.out.println("BOOST:" + i);
-                    c.boostfunction();
-                }else{
-                    c.resetBoost();
-                }
-                if(c.getOverlapDutyCycle() < minActivityAllowed){
+                if(learning) {
                     for (EdgeInterface e : c.getNode().getEdgeIn()) {
-                        ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.0*MySynapse.THRESHOLD);
+                        MyNeuron n = (MyNeuron) e.getNodeIn().getAbstractNetworkNode();
+                        if (n.isActivated()) {
+                            ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(LEARNINGRATE);
+                        } else {
+                            ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(-LEARNINGRATE);
+                        }
                     }
                 }
-                i++;
+            }
+
+            if(learning) {
+                double maxActivity = 0.0;
+                double maxOverlap = 0.0;
+                int i = 0;
+                for (MyColumn c : lstMC) {
+                    c.updateActivity();
+                    if (c.getActivity() > maxActivity)
+                        maxActivity = c.getActivity();
+                    if(c.getOverlapDutyCycle() > maxOverlap)
+                        maxOverlap = c.getOverlapDutyCycle();
+                    i++;
+                }
+                double minActivityAllowed = maxActivity * MINRATEACTIVITY;
+                double minOverlapAllowed = maxOverlap * MINRATEACTIVITY;
+                for (MyColumn c : winners) {
+                    if (c.getActivity() < minActivityAllowed) {
+                        c.boostfunction();
+                    } else {
+                        c.resetBoost();
+                    }
+                    if (c.getOverlapDutyCycle() < minOverlapAllowed) {
+                        for (EdgeInterface e : c.getNode().getEdgeIn()) {
+                            ((MySynapse) e.getAbstractNetworkEdge()).currentValueUdpate(0.01 * MySynapse.THRESHOLD);
+                        }
+                    }
+                }
+
             }
 
             try{
-                if(count2 < 1000){
-                    Thread.sleep(10);
+                if(count2 < 15000){
+                    Thread.sleep(1);
                 }else {
                     learning = false;
+                    for(MyColumn c : lstMC){
+                        c.resetBoost();
+                    }
                     Thread.sleep(1000);
                 }
             } catch (InterruptedException e) {
@@ -294,9 +326,10 @@ public class MyNetwork implements Runnable {
             }
         }
         */
-        double bitWide = 1;
+        double step = 1;
+        double bitWidth = 2;
         for(int i = 0; i < lstMN.size(); i++) {
-            if(currentInput >= i*bitWide && currentInput <= (i+1)*bitWide){
+            if(currentInput >= i*step && currentInput <= i*step+bitWidth){
                 lstMN.get(i).getNode().setState(NodeInterface.State.ACTIVATED);
                 lstMN.get(i).setActivated(true);
             }else{
