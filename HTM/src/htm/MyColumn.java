@@ -15,14 +15,7 @@ import graph.NodeInterface;
  */
 public class MyColumn extends AbstractNetworkNode {
 
-    /**
-     * TODO : Au cours de l'apprentissage, chaque colonne doit atteindre un taux d'activation. 
-     * Une colonnne est activée si elle reçoit suffisament de retours positif de ses synapses 
-     * (le retour est positif si la synapse est active et que son entrée associée l'est également).
-     * 
-     * Pour l'apprentissage, parcourir les synapses en entrée, et faire évoluer les poids synaptiques adéquatement.
-     * 
-     */
+
     private boolean activated = false;
     private double currentOverlap = 0;
     private double activity = 100.0;
@@ -63,6 +56,7 @@ public class MyColumn extends AbstractNetworkNode {
         this.activated = activated;
     }
 
+    //Nous faisons varier la valeur des synpses ici
     public void updateActivity() {
         if(this.isActivated()){
             activity *= 1.01;
